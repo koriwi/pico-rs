@@ -4,9 +4,10 @@ use defmt::Format;
 use embedded_hal::digital::v2::InputPin;
 use finite_state_machine::state_machine;
 
+use super::hal;
 use alloc::boxed::Box;
 use fugit::Instant;
-use rp_pico::hal::{self, gpio::DynPin};
+use hal::gpio::DynPin;
 
 #[derive(Format)]
 pub enum Actions {

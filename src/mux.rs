@@ -1,5 +1,5 @@
+use super::hal;
 use embedded_hal::digital::v2::OutputPin;
-use rp_pico::hal;
 
 use alloc::vec::Vec;
 use hal::gpio::DynPin;

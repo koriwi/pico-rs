@@ -1,79 +1,31 @@
-//! # Pico USB Serial Example
-//!
-//! Creates a USB Serial device on a Pico board, with the USB driver running in
-//! the main thread.
-//!
-//! This will create a USB Serial device echoing anything it receives. Incoming
-//! ASCII characters are converted to upercase, so you can tell it is working
-//! and not just local-echo!
-//!
-//! See the `Cargo.toml` file for Copyright and license details.
-
 #![no_std]
 #![no_main]
-extern crate alloc;
 mod button_machine;
 mod mux;
-use defmt::{debug, println};
-use rp_pico::{hal, Pins};
+mod pins;
+
+extern crate alloc;
+
+use rp_pico::hal;
+
+// use the hal alias
+use hal::{gpio::Pins, pac, sio::Sio, timer::Timer, Clock};
 
 use alloc::boxed::Box;
-// The macro for our start-up function
-use cortex_m_rt::entry;
-use defmt_rtt as _;
-use hal::{gpio::DynPin, pac, Clock};
-
-// Ensure we halt the program on panic (if we don't mention this crate it won't
-// be linked)
 use alloc_cortex_m::CortexMHeap;
+use cortex_m::delay::Delay;
+use cortex_m_rt::entry;
+use defmt::{debug, println};
+use defmt_rtt as _;
 use panic_probe as _;
 
-use crate::mux::{get_mux_pins, set_mux_addr};
+use crate::{
+    mux::{get_mux_pins, set_mux_addr},
+    pins::create_pin_array,
+};
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 
-fn create_pin_array(pins: Pins) -> [Option<DynPin>; 29] {
-    let pin_array: [Option<DynPin>; 29] = [
-        Some(pins.gpio0.into()),
-        Some(pins.gpio1.into()),
-        Some(pins.gpio2.into()),
-        Some(pins.gpio3.into()),
-        Some(pins.gpio4.into()),
-        Some(pins.gpio5.into()),
-        Some(pins.gpio6.into()),
-        Some(pins.gpio7.into()),
-        Some(pins.gpio8.into()),
-        Some(pins.gpio9.into()),
-        Some(pins.gpio10.into()),
-        Some(pins.gpio11.into()),
-        Some(pins.gpio12.into()),
-        Some(pins.gpio13.into()),
-        Some(pins.gpio14.into()),
-        Some(pins.gpio15.into()),
-        Some(pins.gpio16.into()),
-        Some(pins.gpio17.into()),
-        Some(pins.gpio18.into()),
-        Some(pins.gpio19.into()),
-        Some(pins.gpio20.into()),
-        Some(pins.gpio21.into()),
-        Some(pins.gpio22.into()),
-        None,
-        None,
-        None,
-        Some(pins.gpio26.into()),
-        Some(pins.gpio27.into()),
-        Some(pins.gpio28.into()),
-    ];
-    pin_array
-}
-
-/// Entry point to our bare-metal application.
-///
-/// The `#[entry]` macro ensures the Cortex-M start-up code calls this function
-/// as soon as all global variables are initialised.
-///
-/// The function configures the RP2040 peripherals, then echoes any characters
-/// received over USB Serial.
 #[entry]
 fn main() -> ! {
     unsafe {
@@ -98,9 +50,9 @@ fn main() -> ! {
     )
     .ok()
     .unwrap();
-    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
-    let sio = hal::Sio::new(pac.SIO);
-    let pins = rp_pico::Pins::new(
+    let mut delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+    let sio = Sio::new(pac.SIO);
+    let pins = Pins::new(
         pac.IO_BANK0,
         pac.PADS_BANK0,
         sio.gpio_bank0,
@@ -116,7 +68,7 @@ fn main() -> ! {
 
     set_mux_addr(0, &mut mux_pins);
 
-    let timer = hal::Timer::new(pac.TIMER, &mut pac.RESETS);
+    let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
     let mut button_index = 0;
     let mut button_machine = button_machine::ButtonMachine::new(
         &button_pin,
