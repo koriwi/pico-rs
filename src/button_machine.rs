@@ -21,7 +21,8 @@ pub struct Data<'a> {
     has_long_press: bool,
     long_press_duration: u64,
     timer: &'a hal::Timer,
-    execute: Box<dyn FnMut(Actions)>,
+    index: u8,
+    execute: Box<dyn FnMut(Actions, u8)>,
 }
 
 state_machine!(
@@ -56,7 +57,7 @@ impl<'a> ButtonMachine<'a> {
         pin: &'a DynPin,
         long_press_duration: u64,
         timer: &'a hal::Timer,
-        execute: Box<dyn FnMut(Actions)>,
+        execute: Box<dyn FnMut(Actions, u8)>,
     ) -> ButtonMachine<'a> {
         ButtonMachine {
             data: Data {
@@ -65,6 +66,7 @@ impl<'a> ButtonMachine<'a> {
                 has_long_press: false,
                 long_press_duration,
                 timer,
+                index: 0,
                 execute,
             },
             state: State::Start,
@@ -91,8 +93,9 @@ impl<'a> ButtonMachine<'a> {
         let now = self.get_now();
         now.checked_duration_since(down_at).unwrap().to_millis()
     }
-    pub fn check_button(&mut self, has_long_press: bool) -> Result<(), &'static str> {
+    pub fn check_button(&mut self, index: u8, has_long_press: bool) -> Result<(), &'static str> {
         self.state = State::Start;
+        self.data.index = index;
         self.data.has_long_press = has_long_press;
         self.run_to_end()?;
         Ok(())
@@ -151,7 +154,7 @@ impl<'a> StartTransitions for ButtonMachine<'a> {
         self.data.down_at = Some(self.get_now());
         match self.data.has_long_press {
             false => {
-                (self.data.execute)(Actions::ShortDown);
+                (self.data.execute)(Actions::ShortDown, self.data.index);
             }
             true => {}
         }
@@ -166,7 +169,7 @@ impl<'a> DownTransitions for ButtonMachine<'a> {
     fn illegal(&mut self) {}
     fn held_long(&mut self) -> Result<(), &'static str> {
         // let start = Instant::<u64, 1, 1_000_000>::from_ticks(self.data.timer.get_counter().ticks());
-        (self.data.execute)(Actions::LongTriggered);
+        (self.data.execute)(Actions::LongTriggered, self.data.index);
         // let end = Instant::<u64, 1, 1_000_000>::from_ticks(self.data.timer.get_counter().ticks());
         // let diff = (end - start).to_micros();
         // debug!("long press took {}us", diff);
@@ -193,13 +196,13 @@ impl<'a> DownButWaitingTransitions for ButtonMachine<'a> {
 impl<'a> UpTransitions for ButtonMachine<'a> {
     fn illegal(&mut self) {}
     fn short_held(&mut self) -> Result<(), &'static str> {
-        (self.data.execute)(Actions::ShortDown);
-        (self.data.execute)(Actions::ShortUp);
+        (self.data.execute)(Actions::ShortDown, self.data.index);
+        (self.data.execute)(Actions::ShortUp, self.data.index);
         self.data.down_at = None;
         Ok(())
     }
     fn short_up(&mut self) -> Result<(), &'static str> {
-        (self.data.execute)(Actions::ShortUp);
+        (self.data.execute)(Actions::ShortUp, self.data.index);
         self.data.down_at = None;
         Ok(())
     }

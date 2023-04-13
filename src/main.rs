@@ -15,17 +15,18 @@ extern crate alloc;
 mod button_machine;
 use alloc::boxed::Box;
 use defmt::{debug, println};
-use embedded_hal::digital::v2::OutputPin;
+use embedded_hal::digital::v2::{InputPin, OutputPin};
 // The macro for our start-up function
 use defmt_rtt as _;
 use fugit::{Instant, RateExtU32};
 use rp_pico::{
     entry,
     hal::{
-        gpio::DynPin,
+        gpio::{DynInput, DynPin, DynPinId, DynPinMode},
         uart::{DataBits, StopBits, UartConfig},
         Clock,
     },
+    Pins,
 };
 // Ensure we halt the program on panic (if we don't mention this crate it won't
 // be linked)
@@ -51,6 +52,55 @@ use core::fmt::Write;
 use heapless::String;
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
+
+fn get_mux_addr_bits(addr: u8) -> (bool, bool, bool) {
+    let mut addr_bits = (false, false, false);
+    if addr & 0b0001 != 0 {
+        addr_bits.0 = true;
+    }
+    if addr & 0b0010 != 0 {
+        addr_bits.1 = true;
+    }
+    if addr & 0b0100 != 0 {
+        addr_bits.2 = true;
+    }
+    addr_bits
+}
+
+fn create_pin_array(pins: Pins) -> [Option<DynPin>; 29] {
+    let pin_array: [Option<DynPin>; 29] = [
+        Some(pins.gpio0.into()),
+        Some(pins.gpio1.into()),
+        Some(pins.gpio2.into()),
+        Some(pins.gpio3.into()),
+        Some(pins.gpio4.into()),
+        Some(pins.gpio5.into()),
+        Some(pins.gpio6.into()),
+        Some(pins.gpio7.into()),
+        Some(pins.gpio8.into()),
+        Some(pins.gpio9.into()),
+        Some(pins.gpio10.into()),
+        Some(pins.gpio11.into()),
+        Some(pins.gpio12.into()),
+        Some(pins.gpio13.into()),
+        Some(pins.gpio14.into()),
+        Some(pins.gpio15.into()),
+        Some(pins.gpio16.into()),
+        Some(pins.gpio17.into()),
+        Some(pins.gpio18.into()),
+        Some(pins.gpio19.into()),
+        Some(pins.gpio20.into()),
+        Some(pins.gpio21.into()),
+        Some(pins.gpio22.into()),
+        None,
+        None,
+        None,
+        Some(pins.gpio26.into()),
+        Some(pins.gpio27.into()),
+        Some(pins.gpio28.into()),
+    ];
+    pin_array
+}
 
 /// Entry point to our bare-metal application.
 ///
@@ -91,6 +141,8 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
+    let mut pin_array = create_pin_array(pins);
+
     // Set up the USB driver
     // let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
     //     pac.USBCTRL_REGS,
@@ -109,22 +161,69 @@ fn main() -> ! {
     //     .serial_number("TEST")
     //     .device_class(2) // from: https://www.usb.org/defined-class-codes
     //     .build();
-    let mut gpio6: DynPin = pins.gpio6.into();
-    gpio6.into_pull_up_input();
+
+    // get pin programmatically by index
+    let mut mux_s0 = pin_array[20].take().unwrap();
+    let mut mux_s1 = pin_array[21].take().unwrap();
+    let mut mux_s2 = pin_array[22].take().unwrap();
+    let mut button_pin = pin_array[19].take().unwrap();
+
+    mux_s0.into_push_pull_output();
+    mux_s1.into_push_pull_output();
+    mux_s2.into_push_pull_output();
+    button_pin.into_pull_up_input();
+
+    let bits = get_mux_addr_bits(0);
+    if bits.0 {
+        mux_s0.set_high().unwrap();
+    } else {
+        mux_s0.set_low().unwrap();
+    }
+    if bits.1 {
+        mux_s1.set_high().unwrap();
+    } else {
+        mux_s1.set_low().unwrap();
+    }
+    if bits.2 {
+        mux_s2.set_high().unwrap();
+    } else {
+        mux_s2.set_low().unwrap();
+    }
 
     let timer = hal::Timer::new(pac.TIMER, &mut pac.RESETS);
+    let mut button_index = 0;
     let mut button_machine = button_machine::ButtonMachine::new(
-        &gpio6,
+        &button_pin,
         200,
         &timer,
-        Box::new(|action| {
-            debug!("action: {:?}", action);
+        Box::new(|action, index| {
+            debug!("action: {}: {:?}", index, action);
         }),
     );
 
     loop {
         if timer.get_counter().ticks() % 10000 == 0 {
-            button_machine.check_button(true).unwrap();
+            button_machine.check_button(button_index, true).unwrap();
+            button_index += 1;
+            if button_index > 7 {
+                button_index = 0;
+            }
+            let bits = get_mux_addr_bits(button_index);
+            if bits.0 {
+                mux_s0.set_high().unwrap();
+            } else {
+                mux_s0.set_low().unwrap();
+            }
+            if bits.1 {
+                mux_s1.set_high().unwrap();
+            } else {
+                mux_s1.set_low().unwrap();
+            }
+            if bits.2 {
+                mux_s2.set_high().unwrap();
+            } else {
+                mux_s2.set_low().unwrap();
+            }
         }
         // if serial.line_coding().data_rate() == 1200 {
         //     // Reset the board if the host sets the baud rate to 1200
