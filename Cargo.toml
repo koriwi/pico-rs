@@ -4,6 +4,9 @@ name = "rp2040-project-template"
 version = "0.1.0"
 
 [dependencies]
+finite-state-machine = { path = "../../Hobby/finite-state-machine", features = [
+] }
+
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 embedded-hal = { version = "0.2.5", features = ["unproven"] }
@@ -14,6 +17,13 @@ panic-probe = { version = "0.3", features = ["print-defmt"] }
 
 # We're using a Pico by default on this template
 rp-pico = "0.7"
+fugit = "0.3.6"
+panic-halt = "0.2.0"
+usb-device = "0.2.9"
+usbd-serial = "0.1.1"
+heapless = "0.7.16"
+alloc-cortex-m = "0.4.4"
+
 
 # but you can use any BSP. Uncomment this to use the pro_micro_rp2040 BSP instead
 # sparkfun-pro-micro-rp2040 = "0.6"
