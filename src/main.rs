@@ -15,7 +15,7 @@ use alloc::boxed::Box;
 use alloc_cortex_m::CortexMHeap;
 use cortex_m::delay::Delay;
 use cortex_m_rt::entry;
-use defmt::{debug, println};
+use defmt::debug;
 use defmt_rtt as _;
 use panic_probe as _;
 
@@ -31,7 +31,6 @@ fn main() -> ! {
     unsafe {
         ALLOCATOR.init(cortex_m_rt::heap_start() as usize, 1024);
     }
-    println!("free memory: {}", ALLOCATOR.free());
     let mut pac = pac::Peripherals::take().unwrap();
     let core = pac::CorePeripherals::take().unwrap();
 
@@ -61,15 +60,13 @@ fn main() -> ! {
 
     let mut pin_array = create_pin_array(pins);
 
-    // get pin programmatically by index
+    // get pins programmatically by index
     let mut mux_pins = get_mux_pins(&mut pin_array);
+
     let mut button_pin = pin_array[19].take().unwrap();
     button_pin.into_pull_up_input();
 
-    set_mux_addr(0, &mut mux_pins);
-
     let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
-    let mut button_index = 0;
     let mut button_machine = button_machine::ButtonMachine::new(
         &button_pin,
         200,
@@ -78,15 +75,17 @@ fn main() -> ! {
             debug!("action: {}: {:?}", index, action);
         }),
     );
-    println!("free memory: {}", ALLOCATOR.free());
+    let mut button_index = 0;
     loop {
-        if timer.get_counter().ticks() % 10000 == 0 {
+        if timer.get_counter().ticks() % 1000 == 0 {
+            set_mux_addr(button_index, &mut mux_pins);
+            delay.delay_us(10); // wait for mux to settle
+
             button_machine.check_button(button_index, true).unwrap();
             button_index += 1;
             if button_index > 7 {
                 button_index = 0;
             }
-            set_mux_addr(button_index, &mut mux_pins);
         }
         // if serial.line_coding().data_rate() == 1200 {
         //     // Reset the board if the host sets the baud rate to 1200
