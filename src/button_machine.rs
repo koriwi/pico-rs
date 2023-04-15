@@ -5,7 +5,6 @@ use embedded_hal::digital::v2::InputPin;
 use finite_state_machine::state_machine;
 
 use super::hal;
-use alloc::boxed::Box;
 use fugit::Instant;
 use hal::gpio::DynPin;
 
@@ -23,7 +22,7 @@ pub struct Data<'a> {
     long_press_duration: u64,
     timer: &'a hal::Timer,
     index: u8,
-    execute: Box<dyn FnMut(Actions, u8)>,
+    execute: &'a mut dyn FnMut(Actions, u8),
 }
 
 state_machine!(
@@ -58,7 +57,7 @@ impl<'a> ButtonMachine<'a> {
         pin: &'a DynPin,
         long_press_duration: u64,
         timer: &'a hal::Timer,
-        execute: Box<dyn FnMut(Actions, u8)>,
+        execute: &'a mut impl FnMut(Actions, u8),
     ) -> ButtonMachine<'a> {
         ButtonMachine {
             data: Data {

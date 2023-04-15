@@ -6,6 +6,8 @@ version = "0.1.0"
 [dependencies]
 finite-state-machine = { path = "../../Hobby/finite-state-machine", features = [
 ] }
+embedded-graphics = "0.7.1"
+ssd1306 = "0.7.1"
 
 cortex-m = "0.7"
 cortex-m-rt = "0.7"

@@ -2,27 +2,39 @@
 #![no_main]
 mod button_machine;
 mod mux;
-mod pins;
 
 extern crate alloc;
 
-use rp_pico::hal;
+use rp_pico::hal::{
+    self,
+    gpio::{DynPin, FunctionI2C, Pins},
+    pac,
+    sio::Sio,
+    timer::Timer,
+    Clock,
+};
 
-// use the hal alias
-use hal::{gpio::Pins, pac, sio::Sio, timer::Timer, Clock};
+use embedded_graphics::{
+    image::ImageRaw,
+    pixelcolor::{
+        self,
+        raw::{ByteOrder, LittleEndian},
+        BinaryColor,
+    },
+    prelude::*,
+    primitives::{Circle, PrimitiveStyleBuilder, Rectangle, Triangle},
+};
+use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
 
-use alloc::boxed::Box;
 use alloc_cortex_m::CortexMHeap;
 use cortex_m::delay::Delay;
 use cortex_m_rt::entry;
 use defmt::debug;
 use defmt_rtt as _;
+use fugit::RateExtU32;
 use panic_probe as _;
 
-use crate::{
-    mux::{get_mux_pins, set_mux_addr},
-    pins::create_pin_array,
-};
+use crate::mux::set_mux_addr;
 #[global_allocator]
 static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 
@@ -58,23 +70,65 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    let mut pin_array = create_pin_array(pins);
+    let mut mux_pins: [Option<DynPin>; 4] = [
+        Some(pins.gpio20.into()),
+        Some(pins.gpio21.into()),
+        Some(pins.gpio22.into()),
+        None,
+    ];
 
-    // get pins programmatically by index
-    let mut mux_pins = get_mux_pins(&mut pin_array);
+    for pin in mux_pins.iter_mut() {
+        if pin.is_some() {
+            pin.as_mut().unwrap().into_push_pull_output();
+        }
+    }
 
-    let mut button_pin = pin_array[19].take().unwrap();
-    button_pin.into_pull_up_input();
+    let button_pin: DynPin = pins.gpio19.into_pull_up_input().into();
 
-    let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
-    let mut button_machine = button_machine::ButtonMachine::new(
-        &button_pin,
-        200,
-        &timer,
-        Box::new(|action, index| {
-            debug!("action: {}: {:?}", index, action);
-        }),
+    let sda = pins.gpio2.into_mode::<FunctionI2C>();
+    let scl = pins.gpio3.into_mode::<FunctionI2C>();
+
+    // build i2c from dynpins
+    let i2c = hal::i2c::I2C::new_controller(
+        pac.I2C1,
+        sda,
+        scl,
+        800u32.kHz(),
+        &mut pac.RESETS,
+        clocks.system_clock.freq(),
     );
+    let interface = I2CDisplayInterface::new(i2c);
+    let mut display = Ssd1306::new(interface, DisplaySize128x64, DisplayRotation::Rotate0)
+        .into_buffered_graphics_mode();
+    for db in 0..(2_u8.pow(mux_pins.len() as u32)) {
+        set_mux_addr(db, &mut mux_pins);
+        delay.delay_us(10); // wait for mux to settle
+        display.init().unwrap();
+    }
+    display.init().unwrap();
+    // let raw: ImageRaw<'static, pixelcolor::raw::LittleEndian> =
+    //     ImageRaw::new(include_bytes!("./kilian.raw"), 128);
+    let image = include_bytes!("./back.raw");
+    let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
+    let mut callback = |action, index| {
+        match action {
+            button_machine::Actions::ShortDown => {
+                match display.draw(image) {
+                    Ok(_) => {}
+                    Err(_) => debug!("error"),
+                };
+                display.flush().unwrap();
+            }
+            button_machine::Actions::LongTriggered => {
+                display.clear();
+                display.flush().unwrap();
+            }
+            _ => {}
+        };
+        debug!("action: {}: {:?}", index, action);
+    };
+    let mut button_machine =
+        button_machine::ButtonMachine::new(&button_pin, 200, &timer, &mut callback);
     let mut button_index = 0;
     loop {
         if timer.get_counter().ticks() % 1000 == 0 {
@@ -87,6 +141,7 @@ fn main() -> ! {
                 button_index = 0;
             }
         }
+
         // if serial.line_coding().data_rate() == 1200 {
         //     // Reset the board if the host sets the baud rate to 1200
         //     hal::rom_data::reset_to_usb_boot(0, 0);
