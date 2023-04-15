@@ -14,16 +14,6 @@ use rp_pico::hal::{
     Clock,
 };
 
-use embedded_graphics::{
-    image::ImageRaw,
-    pixelcolor::{
-        self,
-        raw::{ByteOrder, LittleEndian},
-        BinaryColor,
-    },
-    prelude::*,
-    primitives::{Circle, PrimitiveStyleBuilder, Rectangle, Triangle},
-};
 use ssd1306::{prelude::*, I2CDisplayInterface, Ssd1306};
 
 use alloc_cortex_m::CortexMHeap;
@@ -93,7 +83,7 @@ fn main() -> ! {
         pac.I2C1,
         sda,
         scl,
-        800u32.kHz(),
+        400u32.kHz(),
         &mut pac.RESETS,
         clocks.system_clock.freq(),
     );
@@ -102,12 +92,11 @@ fn main() -> ! {
         .into_buffered_graphics_mode();
     for db in 0..(2_u8.pow(mux_pins.len() as u32)) {
         set_mux_addr(db, &mut mux_pins);
-        delay.delay_us(10); // wait for mux to settle
+        delay.delay_ms(1); // wait for mux to settle
         display.init().unwrap();
+        delay.delay_ms(1);
     }
     display.init().unwrap();
-    // let raw: ImageRaw<'static, pixelcolor::raw::LittleEndian> =
-    //     ImageRaw::new(include_bytes!("./kilian.raw"), 128);
     let image = include_bytes!("./back.raw");
     let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
     let mut callback = |action, index| {
@@ -119,7 +108,7 @@ fn main() -> ! {
                 };
                 display.flush().unwrap();
             }
-            button_machine::Actions::LongTriggered => {
+            button_machine::Actions::ShortUp => {
                 display.clear();
                 display.flush().unwrap();
             }
@@ -135,7 +124,7 @@ fn main() -> ! {
             set_mux_addr(button_index, &mut mux_pins);
             delay.delay_us(10); // wait for mux to settle
 
-            button_machine.check_button(button_index, true).unwrap();
+            button_machine.check_button(button_index, false).unwrap();
             button_index += 1;
             if button_index > 7 {
                 button_index = 0;
