@@ -25,6 +25,7 @@ usbd-serial = "0.1.1"
 heapless = "0.7.16"
 alloc-cortex-m = "0.4.4"
 embedded-sdmmc = { git = "https://github.com/mdarrik/embedded-sdmmc-rs", branch = "skip-wait-init-sequence" }
+once_cell = { version = "1.17.1", default-features = false }
 
 
 # but you can use any BSP. Uncomment this to use the pro_micro_rp2040 BSP instead
