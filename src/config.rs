@@ -5,10 +5,8 @@ use crate::{
 };
 
 use super::ROW_SIZE;
-use defmt::{debug, Debug2Format};
-use embedded_sdmmc::{BlockDevice, BlockSpi, Controller, Mode, SdMmcSpi, VolumeIdx};
-use rp_pico::hal::spi::DataSize;
-
+use defmt::debug;
+use embedded_sdmmc::{Controller, Mode, SdMmcSpi, VolumeIdx};
 #[derive(Debug)]
 pub struct Header {
     width: u8,
@@ -36,6 +34,11 @@ impl Header {
     pub fn image_start(&self) -> u32 {
         (self.row_size as u16 * (self.offset)) as u32
     }
+}
+
+pub struct Row<'a> {
+    pub data: &'a [u8],
+    pub function: ButtonFunction,
 }
 
 pub type FDController<'a, SPI, CS> =
@@ -123,16 +126,16 @@ where
         }
     }
 
-    pub fn get_primary_function(&self, index: usize) -> (ButtonFunction, &[u8]) {
-        (
-            self.buttons[index].primary_function,
-            self.buttons[index].get_primary_data(),
-        )
+    pub fn get_primary_function(&self, index: usize) -> Row {
+        Row {
+            data: self.buttons[index].get_primary_data(),
+            function: self.buttons[index].primary_function,
+        }
     }
-    pub fn get_secondary_function(&self, index: usize) -> (ButtonFunction, &[u8]) {
-        (
-            self.buttons[index].secondary_function,
-            self.buttons[index].get_secondary_data(),
-        )
+    pub fn get_secondary_function(&self, index: usize) -> Row {
+        Row {
+            data: self.buttons[index].get_secondary_data(),
+            function: self.buttons[index].secondary_function,
+        }
     }
 }

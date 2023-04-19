@@ -1,7 +1,6 @@
 use defmt::{debug, Debug2Format};
-use embedded_sdmmc::BlockDevice;
 
-use crate::{config::FDController, read, ROW_SIZE};
+use crate::ROW_SIZE;
 
 #[derive(Debug, Clone, Copy)]
 pub enum ButtonFunction {

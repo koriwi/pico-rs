@@ -1,10 +1,9 @@
 use super::hal;
-use cortex_m::delay::Delay;
 use embedded_hal::digital::v2::OutputPin;
 
 use hal::gpio::DynPin;
 
-pub fn set_mux_addr(addr: u8, mux_pins: &mut [Option<DynPin>], delay: &mut Delay) {
+pub fn set_mux_addr(addr: u8, mux_pins: &mut [Option<DynPin>]) {
     for (index, pin) in mux_pins.iter_mut().enumerate() {
         if pin.is_none() {
             return;

@@ -13,3 +13,18 @@ impl TimeSource for NineTeenSeventy {
         }
     }
 }
+
+pub fn retry<F, T, E>(mut f: F) -> T
+where
+    F: FnMut() -> Result<T, E>,
+    E: core::fmt::Debug,
+{
+    let mut result = f();
+    while result.is_err() {
+        result = f();
+    }
+    match result {
+        Ok(t) => t,
+        Err(e) => panic!("{:?}", e),
+    }
+}

@@ -1,4 +1,3 @@
-extern crate alloc;
 pub use button_machine::*;
 use defmt::Format;
 use embedded_hal::digital::v2::InputPin;
