@@ -2,12 +2,10 @@
 #![no_main]
 mod button_machine;
 mod config;
-mod debug;
-mod macros;
-mod misc;
 mod mux;
 mod overclock;
 mod sdcard;
+mod util;
 
 const BUTTON_COUNT: usize = 8;
 const SD_MHZ: u32 = 12;
@@ -32,13 +30,12 @@ use ssd1306::prelude::*;
 use ssd1306::I2CDisplayInterface;
 use ssd1306::Ssd1306;
 
-use crate::button_machine::ButtonEvent;
-use crate::button_machine::ButtonMachine;
-use crate::config::Config;
+use button_machine::*;
+use config::*;
 
 use crate::config::action::ButtonFunction;
-use crate::misc::retry;
 use crate::mux::create_set_mux_addr;
+use crate::util::retry;
 
 use cortex_m_rt::entry;
 use defmt_rtt as _;

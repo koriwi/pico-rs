@@ -1,6 +1,12 @@
 use embedded_sdmmc::TimeSource;
-
-use crate::debug;
+pub extern crate defmt;
+#[macro_export]
+macro_rules! debug {
+    ($($all:tt)*) => {
+        #[cfg(feature = "debug")]
+        defmt::debug!($($all)*)
+    };
+}
 
 pub struct NineTeenSeventy {}
 impl TimeSource for NineTeenSeventy {

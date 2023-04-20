@@ -1,7 +1,6 @@
-use super::{
-    action::{ButtonFunction, ChangePage, PressKeys},
-    IMAGE_SIZE, ROW_SIZE,
-};
+use super::action::ButtonFunction;
+use super::IMAGE_SIZE;
+use super::ROW_SIZE;
 
 const DATA_SIZE: usize = ROW_SIZE as usize / 2 - 1;
 

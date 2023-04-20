@@ -44,10 +44,8 @@ where
             header,
         }
     }
-    fn load_page_from_file(config_file: &mut C, header: &Header, page: u16) -> Page
-    where
-        C: RWSeek,
-    {
+
+    fn load_page_from_file(config_file: &mut C, header: &Header, page: u16) -> Page {
         let mut data_buffs: DataBuffs = [[0u8; ROW_SIZE as usize]; BUTTON_COUNT];
         let data_offset = header.data_offset(page);
         debug!("data_offset: {}", data_offset);

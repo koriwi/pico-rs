@@ -10,7 +10,7 @@ use rp_pico::{
     pac::RESETS,
 };
 
-use crate::{config::RWSeek, debug, misc::NineTeenSeventy};
+use crate::{config::RWSeek, debug, util::NineTeenSeventy};
 
 pub struct SpiPins {
     data_pins: [DynPin; 3],
