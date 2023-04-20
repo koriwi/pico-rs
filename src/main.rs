@@ -1,17 +1,15 @@
 #![no_std]
 #![no_main]
-mod button;
 mod button_machine;
 mod config;
+mod debug;
 mod macros;
 mod misc;
 mod mux;
 mod overclock;
 mod sdcard;
-mod short;
 
 const BUTTON_COUNT: usize = 8;
-const ROW_SIZE: usize = 128;
 const SD_MHZ: u32 = 12;
 const I2C_KHZ: u32 = 800;
 
@@ -27,21 +25,22 @@ use rp_pico::hal::timer::Timer;
 use rp_pico::hal::Clock;
 
 use sdcard::create_sdcard;
+use sdcard::SDConfigFile;
 use sdcard::SpiPins;
 
 use ssd1306::prelude::*;
 use ssd1306::I2CDisplayInterface;
 use ssd1306::Ssd1306;
 
-use crate::button::ButtonFunction;
-use crate::button_machine::Actions;
+use crate::button_machine::ButtonEvent;
 use crate::button_machine::ButtonMachine;
 use crate::config::Config;
+
+use crate::config::action::ButtonFunction;
 use crate::misc::retry;
-use crate::mux::set_mux_addr;
+use crate::mux::create_set_mux_addr;
 
 use cortex_m_rt::entry;
-use defmt::debug;
 use defmt_rtt as _;
 use fugit::RateExtU32;
 use panic_probe as _;
@@ -87,6 +86,7 @@ fn main() -> ! {
             pin.as_mut().unwrap().into_push_pull_output();
         }
     }
+    let mut set_mux_addr = create_set_mux_addr(mux_pins);
 
     let button_pin: DynPin = pins.gpio19.into_pull_up_input().into();
     let sda = pins.gpio2.into_mode::<FunctionI2C>();
@@ -120,49 +120,70 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
-    let mut config = Config::new(&mut sd_spi);
-    config.read_page_data(0);
+    let config_file = SDConfigFile::new(&mut sd_spi);
 
-    for (i, button) in config.buttons.iter().enumerate() {
-        set_mux_addr(i as u8, &mut mux_pins);
+    let mut config = Config::new(config_file);
+    config.load_page(0);
+
+    for (i, button) in config.page.buttons.iter().enumerate() {
+        set_mux_addr(i as u8);
         retry(|| display.init());
-        retry(|| display.draw(button.get_image()));
+        retry(|| display.draw(button.image_buff()));
     }
 
-    let mut button_changed = |action, index: u8| {
-        let action = match action {
+    let mut button_changed = |event, index: u8| {
+        let event = match event {
             Some(a) => a,
             None => {
                 let max = BUTTON_COUNT as u8 - 1;
                 let new_index = if index == max { 0 } else { index + 1 };
-                set_mux_addr(new_index, &mut mux_pins);
+                set_mux_addr(new_index);
                 return;
             }
         };
+        let mut button = config.page.buttons[index as usize];
 
-        let primary = config.get_primary_function(index as usize);
-        // let (secondary_function, secondary_data) = config.get_secondary_function(index as usize);
-
-        match action {
-            Actions::ShortDown => {
-                debug!("short down");
+        let mut change_page = |target_page: u16| {
+            config.load_page(target_page);
+            for (i, button) in config.page.buttons.iter().enumerate() {
+                set_mux_addr(i as u8);
+                retry(|| display.draw(button.image_buff()));
             }
-            Actions::ShortUp => match primary.function {
-                ButtonFunction::ChangePage => {
-                    config
-                        .read_page_data(u16::from_le_bytes(primary.data[0..2].try_into().unwrap()));
-                    config.buttons.iter().enumerate().for_each(|(i, b)| {
-                        set_mux_addr(i as u8, &mut mux_pins);
-                        retry(|| display.draw(b.get_image()));
-                    });
+        };
+
+        let key_down = |key: u8| {
+            debug!("key_down: {}", key);
+        };
+        let key_up = |key: u8| {
+            debug!("key_up: {}", key);
+        };
+
+        match event {
+            ButtonEvent::ShortDown => match button.primary_function() {
+                ButtonFunction::PressKeys(data) => {
+                    for key in data.keys.iter() {
+                        key_up(*key);
+                    }
                 }
                 _ => {
-                    debug!("short up");
+                    debug!("short down");
                 }
+            },
+            ButtonEvent::ShortUp => match button.primary_function() {
+                ButtonFunction::ChangePage(data) => {
+                    change_page(data.target_page);
+                    debug!("change page: {}", data.target_page);
+                }
+                ButtonFunction::PressKeys(data) => {
+                    for key in data.keys.iter() {
+                        key_down(*key);
+                    }
+                }
+                _ => {}
             },
             _ => {}
         };
-        debug!("action: {}: {:?}", index, action);
+        debug!("action: {}: {:?}", index, event);
     };
 
     let timer = Timer::new(pac.TIMER, &mut pac.RESETS);

@@ -8,7 +8,7 @@ use fugit::Instant;
 use hal::gpio::DynPin;
 
 #[derive(Format)]
-pub enum Actions {
+pub enum ButtonEvent {
     ShortDown,
     ShortUp,
     LongTriggered,
@@ -21,7 +21,7 @@ pub struct Data<'a> {
     long_press_duration: u64,
     timer: &'a hal::Timer,
     index: u8,
-    execute: &'a mut dyn FnMut(Option<Actions>, u8),
+    execute: &'a mut dyn FnMut(Option<ButtonEvent>, u8),
 }
 
 state_machine!(
@@ -56,7 +56,7 @@ impl<'a> ButtonMachine<'a> {
         pin: &'a DynPin,
         long_press_duration: u64,
         timer: &'a hal::Timer,
-        execute: &'a mut impl FnMut(Option<Actions>, u8),
+        execute: &'a mut impl FnMut(Option<ButtonEvent>, u8),
     ) -> ButtonMachine<'a> {
         ButtonMachine {
             data: Data {
@@ -153,7 +153,7 @@ impl<'a> StartTransitions for ButtonMachine<'a> {
         self.data.down_at = Some(self.get_now());
         match self.data.has_long_press {
             false => {
-                (self.data.execute)(Some(Actions::ShortDown), self.data.index);
+                (self.data.execute)(Some(ButtonEvent::ShortDown), self.data.index);
             }
             true => {}
         }
@@ -169,7 +169,7 @@ impl<'a> DownTransitions for ButtonMachine<'a> {
     fn illegal(&mut self) {}
     fn held_long(&mut self) -> Result<(), &'static str> {
         // let start = Instant::<u64, 1, 1_000_000>::from_ticks(self.data.timer.get_counter().ticks());
-        (self.data.execute)(Some(Actions::LongTriggered), self.data.index);
+        (self.data.execute)(Some(ButtonEvent::LongTriggered), self.data.index);
         // let end = Instant::<u64, 1, 1_000_000>::from_ticks(self.data.timer.get_counter().ticks());
         // let diff = (end - start).to_micros();
         // debug!("long press took {}us", diff);
@@ -196,13 +196,13 @@ impl<'a> DownButWaitingTransitions for ButtonMachine<'a> {
 impl<'a> UpTransitions for ButtonMachine<'a> {
     fn illegal(&mut self) {}
     fn short_held(&mut self) -> Result<(), &'static str> {
-        (self.data.execute)(Some(Actions::ShortDown), self.data.index);
-        (self.data.execute)(Some(Actions::ShortUp), self.data.index);
+        (self.data.execute)(Some(ButtonEvent::ShortDown), self.data.index);
+        (self.data.execute)(Some(ButtonEvent::ShortUp), self.data.index);
         self.data.down_at = None;
         Ok(())
     }
     fn short_up(&mut self) -> Result<(), &'static str> {
-        (self.data.execute)(Some(Actions::ShortUp), self.data.index);
+        (self.data.execute)(Some(ButtonEvent::ShortUp), self.data.index);
         self.data.down_at = None;
         Ok(())
     }

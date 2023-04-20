@@ -3,6 +3,9 @@ edition = "2021"
 name = "rp2040-project-template"
 version = "0.1.0"
 
+[features]
+debug = []
+
 [dependencies]
 finite-state-machine = { path = "../../Hobby/finite-state-machine", features = [
 ] }
@@ -26,6 +29,7 @@ heapless = "0.7.16"
 alloc-cortex-m = "0.4.4"
 embedded-sdmmc = { git = "https://github.com/mdarrik/embedded-sdmmc-rs", branch = "skip-wait-init-sequence" }
 once_cell = { version = "1.17.1", default-features = false }
+impl-tools = "0.8.0"
 
 
 # but you can use any BSP. Uncomment this to use the pro_micro_rp2040 BSP instead

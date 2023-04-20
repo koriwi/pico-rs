@@ -1,5 +1,7 @@
 use embedded_sdmmc::TimeSource;
 
+use crate::debug;
+
 pub struct NineTeenSeventy {}
 impl TimeSource for NineTeenSeventy {
     fn get_timestamp(&self) -> embedded_sdmmc::Timestamp {
@@ -21,6 +23,7 @@ where
 {
     let mut result = f();
     while result.is_err() {
+        debug!("retrying");
         result = f();
     }
     match result {
