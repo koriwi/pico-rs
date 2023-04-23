@@ -28,7 +28,6 @@ pub struct PressKeys<'a> {
 
 impl<'a> From<&'a [u8]> for PressKeys<'a> {
     fn from(value: &'a [u8]) -> Self {
-        debug!("PressKeys::from({:?})", value);
         let len = value.len();
         let last_key_index = value.iter().position(|&k| k == 0).unwrap();
         let keys = &value[..last_key_index];

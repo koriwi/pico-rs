@@ -1,9 +1,8 @@
 use embedded_sdmmc::TimeSource;
-pub extern crate defmt;
 #[macro_export]
 macro_rules! debug {
     ($($all:tt)*) => {
-        #[cfg(feature = "debug")]
+        #[cfg(feature = "dbg")]
         defmt::debug!($($all)*)
     };
 }

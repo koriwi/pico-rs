@@ -11,6 +11,7 @@ const BUTTON_COUNT: usize = 8;
 const SD_MHZ: u32 = 12;
 const I2C_KHZ: u32 = 800;
 
+use config::button::Button;
 use overclock::init_clocks_and_plls;
 
 use rp_pico::hal;
@@ -31,7 +32,6 @@ use ssd1306::I2CDisplayInterface;
 use ssd1306::Ssd1306;
 
 use button_machine::*;
-use config::*;
 
 use crate::config::action::ButtonFunction;
 use crate::mux::create_set_mux_addr;
@@ -117,9 +117,10 @@ fn main() -> ! {
         &mut pac.RESETS,
     );
 
+    debug!("tick");
     let config_file = SDConfigFile::new(&mut sd_spi);
 
-    let mut config = Config::new(config_file);
+    let mut config = config::Config::new(config_file);
     config.load_page(0);
 
     for (i, button) in config.page.buttons.iter().enumerate() {
@@ -127,69 +128,55 @@ fn main() -> ! {
         retry(|| display.init());
         retry(|| display.draw(button.image_buff()));
     }
-
-    let mut button_changed = |event, index: u8| {
+    debug!("tick");
+    let mut button_changed = |event, button: &mut Button| {
         let event = match event {
             Some(a) => a,
             None => {
-                let max = BUTTON_COUNT as u8 - 1;
-                let new_index = if index == max { 0 } else { index + 1 };
-                set_mux_addr(new_index);
+                // let max = BUTTON_COUNT as u8 - 1;
+                // let new_index = if index == max { 0 } else { index + 1 };
+                // set_mux_addr(new_index);
                 return;
             }
         };
-        let mut button = config.page.buttons[index as usize];
+        debug!("button changed: {:?}", event);
+        // let mut button = config.page.buttons[index as usize];
 
         let mut change_page = |target_page: u16| {
-            config.load_page(target_page);
-            for (i, button) in config.page.buttons.iter().enumerate() {
-                set_mux_addr(i as u8);
-                retry(|| display.draw(button.image_buff()));
+            // config.load_page(target_page);
+            // for (i, button) in config.page.buttons.iter().enumerate() {
+            //     set_mux_addr(i as u8);
+            //     retry(|| display.draw(button.image_buff()));
+            // }
+            debug!("change page: {}", target_page)
+        };
+        debug!("button changed:{:?}", event);
+        let function = match event {
+            ButtonEvent::ShortDown | ButtonEvent::ShortUp | ButtonEvent::ShortTriggered => {
+                button.primary_function()
             }
+            ButtonEvent::LongTriggered => button.secondary_function(),
         };
-
-        let key_down = |key: u8| {
-            debug!("key_down: {}", key);
-        };
-        let key_up = |key: u8| {
-            debug!("key_up: {}", key);
-        };
-
-        match event {
-            ButtonEvent::ShortDown => match button.primary_function() {
-                ButtonFunction::PressKeys(data) => {
-                    for key in data.keys.iter() {
-                        key_up(*key);
-                    }
-                }
-                _ => {
-                    debug!("short down");
-                }
-            },
-            ButtonEvent::ShortUp => match button.primary_function() {
-                ButtonFunction::ChangePage(data) => {
-                    change_page(data.target_page);
-                    debug!("change page: {}", data.target_page);
-                }
-                ButtonFunction::PressKeys(data) => {
-                    for key in data.keys.iter() {
-                        key_down(*key);
-                    }
-                }
-                _ => {}
-            },
+        match (function, event) {
+            (ButtonFunction::ChangePage(data), _) => {
+                change_page(data.target_page);
+            }
+            (ButtonFunction::ChangePage(_), ButtonEvent::ShortDown) => {}
             _ => {}
         };
-        debug!("action: {}: {:?}", index, event);
     };
 
     let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
-    let mut button_machine = ButtonMachine::new(&button_pin, 200, &timer, &mut button_changed);
+    let mut button_machine = ButtonMachine::new(&button_pin, 200, &timer);
     let mut button_index = 0;
 
     loop {
         if timer.get_counter().ticks() % 1000 == 0 {
-            button_machine.check_button(button_index, false).unwrap();
+            set_mux_addr(button_index as u8);
+            let mut button = config.page.buttons[button_index];
+            button_machine
+                .check_button(&mut button, &mut button_changed)
+                .unwrap();
             button_index += 1;
             if button_index > 7 {
                 button_index = 0;

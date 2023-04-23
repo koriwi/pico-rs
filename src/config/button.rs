@@ -33,7 +33,9 @@ impl Button {
             _ => ButtonFunction::None, // invalid but also 2
         }
     }
-
+    pub fn has_secondary_function(&self) -> bool {
+        self.raw_data[ROW_SIZE as usize / 2] != 2
+    }
     pub fn has_live_data(&mut self) -> bool {
         self.raw_image[0] == 1
     }
