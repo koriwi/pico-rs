@@ -20,8 +20,8 @@ pub enum ButtonEvent {
 
 pub struct Data<'a> {
     down_at: Option<Instant<u64, 1, 1000000>>,
-    button: &'a mut Button,
-    execute: &'a mut dyn FnMut(Option<ButtonEvent>, &mut Button),
+    has_second_function: bool,
+    execute: &'a mut dyn FnMut(Option<ButtonEvent>),
 }
 
 pub struct Config<'a> {
@@ -95,12 +95,12 @@ impl<'a> ButtonMachine<'a> {
     }
     pub fn check_button<'b>(
         &mut self,
-        button: &'b mut Button,
-        execute: &mut dyn FnMut(Option<ButtonEvent>, &mut Button),
+        has_second_function: bool,
+        execute: &mut dyn FnMut(Option<ButtonEvent>),
     ) -> Result<(), &'static str> {
         let mut state = Data {
             down_at: None,
-            button,
+            has_second_function,
             execute,
         };
         self.run_to_end(&mut state)?;
@@ -117,7 +117,7 @@ impl<'a, 'b> Deciders<Data<'b>> for ButtonMachine<'a> {
     }
     fn down(&self, data: &Data) -> DownEvents {
         // todo: implement wakeup from screensaver
-        match data.button.has_secondary_function() {
+        match data.has_second_function {
             true => {
                 let diff = self.get_diff_since_down(data);
                 if diff > self.config.long_press_duration {
@@ -135,7 +135,7 @@ impl<'a, 'b> Deciders<Data<'b>> for ButtonMachine<'a> {
         }
     }
     fn up(&self, data: &Data) -> UpEvents {
-        match data.button.has_secondary_function() {
+        match data.has_second_function {
             true => {
                 let diff = self.get_diff_since_down(data);
                 if diff > self.config.long_press_duration {
@@ -158,16 +158,16 @@ impl<'a, 'b> StartTransitions<Data<'b>> for ButtonMachine<'a> {
     fn illegal(&mut self) {}
     fn is_down(&mut self, data: &mut Data) -> Result<(), &'static str> {
         data.down_at = Some(self.get_now());
-        match data.button.has_secondary_function() {
+        match data.has_second_function {
             false => {
-                (data.execute)(Some(ButtonEvent::ShortDown), data.button);
+                (data.execute)(Some(ButtonEvent::ShortDown));
             }
             true => {}
         }
         Ok(())
     }
     fn is_up(&mut self, data: &mut Data) -> Result<(), &'static str> {
-        (data.execute)(None, data.button);
+        (data.execute)(None);
         Ok(())
     }
 }
@@ -176,7 +176,7 @@ impl<'a, 'b> DownTransitions<Data<'b>> for ButtonMachine<'a> {
     fn illegal(&mut self) {}
     fn held_long(&mut self, data: &mut Data) -> Result<(), &'static str> {
         // let start = Instant::<u64, 1, 1_000_000>::from_ticks(self.config.timer.get_counter().ticks());
-        (data.execute)(Some(ButtonEvent::LongTriggered), data.button);
+        (data.execute)(Some(ButtonEvent::LongTriggered));
         // let end = Instant::<u64, 1, 1_000_000>::from_ticks(self.config.timer.get_counter().ticks());
         // let diff = (end - start).to_micros();
         // debug!("long press took {}us", diff);
@@ -204,12 +204,12 @@ impl<'a, 'b> DownButWaitingTransitions<Data<'b>> for ButtonMachine<'a> {
 impl<'a, 'b> UpTransitions<Data<'b>> for ButtonMachine<'a> {
     fn illegal(&mut self) {}
     fn short_held(&mut self, data: &mut Data) -> Result<(), &'static str> {
-        (data.execute)(Some(ButtonEvent::ShortTriggered), data.button);
+        (data.execute)(Some(ButtonEvent::ShortTriggered));
         data.down_at = None;
         Ok(())
     }
     fn short_up(&mut self, data: &mut Data) -> Result<(), &'static str> {
-        (data.execute)(Some(ButtonEvent::ShortUp), data.button);
+        (data.execute)(Some(ButtonEvent::ShortUp));
         data.down_at = None;
         Ok(())
     }

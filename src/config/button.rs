@@ -1,10 +1,12 @@
+use crate::debug;
+
 use super::action::ButtonFunction;
 use super::IMAGE_SIZE;
 use super::ROW_SIZE;
 
 const DATA_SIZE: usize = ROW_SIZE as usize / 2 - 1;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Button {
     pub raw_image: [u8; IMAGE_SIZE as usize],
     pub raw_data: [u8; ROW_SIZE as usize],
@@ -44,9 +46,9 @@ impl Button {
         &self.raw_image[1..]
     }
     pub fn primary_data(&self) -> &[u8] {
-        &self.raw_data[1..DATA_SIZE]
+        &self.raw_data[1..DATA_SIZE + 1]
     }
     pub fn secondary_data(&self) -> &[u8] {
-        &self.raw_data[DATA_SIZE + 1..]
+        &self.raw_data[DATA_SIZE + 2..]
     }
 }

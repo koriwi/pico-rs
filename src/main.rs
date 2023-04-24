@@ -126,7 +126,6 @@ fn main() -> ! {
     let config_file = SDConfigFile::new(&mut sd_spi);
 
     let mut config = config::Config::new(config_file);
-    config.load_page(0);
 
     for (i, button) in config.page.buttons.iter().enumerate() {
         set_mux_addr(i as u8);
@@ -138,46 +137,18 @@ fn main() -> ! {
     let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
     let mut button_machine = ButtonMachine::new(&button_pin, 200, &timer);
     let mut button_index = 0;
-
+    let mut functions = Functions::new(
+        &mut config,
+        &mut display,
+        &mut set_mux_addr,
+        &mut button_index,
+    );
     loop {
         if timer.get_counter().ticks() % 1000 == 0 {
-            let mut button2 = config.page.buttons[button_index];
-            let mut button_changed = |event, button: &mut Button| {
-                let mut functions = Functions::new(
-                    &mut config,
-                    &mut display,
-                    &mut set_mux_addr,
-                    &mut button_index,
-                );
-                let event = match event {
-                    Some(a) => a,
-                    None => {
-                        functions.none();
-                        return;
-                    }
-                };
-                let function = match event {
-                    ButtonEvent::ShortDown | ButtonEvent::ShortUp | ButtonEvent::ShortTriggered => {
-                        button.primary_function()
-                    }
-                    ButtonEvent::LongTriggered => button.secondary_function(),
-                };
-                debug!("button changed: {:?} {:?}", event, Debug2Format(&function));
-                match (function, event) {
-                    (
-                        ButtonFunction::ChangePage(data),
-                        ButtonEvent::LongTriggered
-                        | ButtonEvent::ShortTriggered
-                        | ButtonEvent::ShortDown,
-                    ) => {
-                        functions.change_page(data.target_page);
-                        set_mux_addr(button_index as u8);
-                    }
-                    _ => {}
-                };
-            };
             button_machine
-                .check_button(&mut button2, &mut button_changed)
+                .check_button(functions.has_secondary_function(), &mut |event| {
+                    functions.bar(event)
+                })
                 .unwrap();
         }
 

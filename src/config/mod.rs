@@ -36,16 +36,16 @@ where
         config_file.read(&mut header_buf).unwrap();
 
         let header = Header::from(header_buf);
-        let page = Self::load_page_from_file(&mut config_file, &header, 0);
+        let page = Self::load_from_file(&mut config_file, &header, 0);
 
         Self {
-            page,
             config_file,
             header,
+            page,
         }
     }
 
-    fn load_page_from_file(config_file: &mut C, header: &Header, page: u16) -> Page {
+    fn load_from_file(config_file: &mut C, header: &Header, page: u16) -> Page {
         let mut data_buffs: DataBuffs = [[0u8; ROW_SIZE as usize]; BUTTON_COUNT];
         let data_offset = header.data_offset(page);
         debug!("data_offset: {}", data_offset);
@@ -63,6 +63,6 @@ where
         Page::from((data_buffs, images_buffs))
     }
     pub fn load_page(&mut self, page: u16) {
-        self.page = Self::load_page_from_file(&mut self.config_file, &self.header, page)
+        self.page = Self::load_from_file(&mut self.config_file, &self.header, page);
     }
 }
