@@ -35,13 +35,11 @@ use ssd1306::Ssd1306;
 
 use button_machine::*;
 
-use crate::config::action::ButtonFunction;
 use crate::functions::Functions;
 use crate::mux::create_set_mux_addr;
 use crate::util::retry;
 
 use cortex_m_rt::entry;
-use defmt::Debug2Format;
 use defmt_rtt as _;
 use fugit::RateExtU32;
 use panic_probe as _;
@@ -87,7 +85,7 @@ fn main() -> ! {
         }
     }
 
-    let mut delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+    let delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
     let mut set_mux_addr = create_set_mux_addr(mux_pins, delay);
 
     let button_pin: DynPin = pins.gpio19.into_pull_up_input().into();

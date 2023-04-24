@@ -5,7 +5,6 @@ use ssd1306::Ssd1306;
 
 use crate::button_machine::ButtonEvent;
 use crate::config::action::ButtonFunction;
-use crate::config::page::Page;
 use crate::config::Config;
 use crate::config::RWSeek;
 use crate::debug;

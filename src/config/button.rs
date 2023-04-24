@@ -1,9 +1,8 @@
-use crate::debug;
-
 use super::action::ButtonFunction;
 use super::IMAGE_SIZE;
 use super::ROW_SIZE;
 
+// -1 for the mode byte
 const DATA_SIZE: usize = ROW_SIZE as usize / 2 - 1;
 
 #[derive(Debug)]
