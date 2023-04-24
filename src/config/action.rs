@@ -1,5 +1,6 @@
 use crate::debug;
 
+#[derive(Debug)]
 pub enum ButtonFunction<'a> {
     PressKeys(PressKeys<'a>), //0
     ChangePage(ChangePage),   //1
@@ -9,6 +10,7 @@ pub enum ButtonFunction<'a> {
     SetSetting,               //5
     CommunicateToHost,        //6
 }
+#[derive(Debug)]
 pub struct ChangePage {
     pub target_page: u16,
 }
@@ -21,6 +23,7 @@ impl From<&[u8]> for ChangePage {
     }
 }
 
+#[derive(Debug)]
 pub struct PressKeys<'a> {
     pub keys: &'a [u8],
     pub goto: Option<u16>,

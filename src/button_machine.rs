@@ -4,6 +4,7 @@ use embedded_hal::digital::v2::InputPin;
 use finite_state_machine::state_machine;
 
 use crate::config::button::Button;
+use crate::debug;
 
 use super::hal;
 use fugit::Instant;
@@ -77,6 +78,7 @@ impl<'a> ButtonMachine<'a> {
                 return ButtonState::Up;
             }
         };
+
         if is_down {
             ButtonState::Down
         } else {
@@ -181,6 +183,7 @@ impl<'a, 'b> DownTransitions<Data<'b>> for ButtonMachine<'a> {
         Ok(())
     }
     fn any_up(&mut self, data: &mut Data) -> Result<(), &'static str> {
+        debug!("any up");
         Ok(())
     }
     fn still_down(&mut self, data: &mut Data) -> Result<(), &'static str> {
