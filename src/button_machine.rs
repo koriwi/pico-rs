@@ -183,7 +183,6 @@ impl<'a, 'b> DownTransitions<Data<'b>> for ButtonMachine<'a> {
         Ok(())
     }
     fn any_up(&mut self, data: &mut Data) -> Result<(), &'static str> {
-        debug!("any up");
         Ok(())
     }
     fn still_down(&mut self, data: &mut Data) -> Result<(), &'static str> {

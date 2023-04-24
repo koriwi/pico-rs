@@ -54,13 +54,25 @@ where
         (self.set_mux_addr)(*self.button_index as u8);
     }
 
+    fn send_keys_down(&self, keys: &[u8]) {
+        for key in keys {
+            debug!("send key down: {}", key);
+        }
+    }
+
+    fn send_keys_up(&self, keys: &[u8]) {
+        for key in keys {
+            debug!("send key up: {}", key);
+        }
+    }
+
     pub fn has_secondary_function(&self) -> bool {
         let button = &self.config.page.buttons[*self.button_index];
         button.has_secondary_function()
     }
 
     pub fn bar(&mut self, event: Option<ButtonEvent>) {
-        let button = &mut self.config.page.buttons[*self.button_index];
+        let button = &self.config.page.buttons[*self.button_index];
         let event = match event {
             Some(a) => a,
             None => {
@@ -74,13 +86,25 @@ where
             }
             ButtonEvent::LongTriggered => button.secondary_function(),
         };
-        debug!("button changed: {:?} {:?}", event, Debug2Format(&function));
         match (function, event) {
             (
                 ButtonFunction::ChangePage(data),
-                ButtonEvent::LongTriggered | ButtonEvent::ShortTriggered | ButtonEvent::ShortDown,
+                ButtonEvent::LongTriggered | ButtonEvent::ShortTriggered | ButtonEvent::ShortUp,
             ) => {
                 self.change_page(data.target_page);
+            }
+            (ButtonFunction::PressKeys(data), ButtonEvent::ShortDown) => {
+                self.send_keys_down(data.keys);
+            }
+            (ButtonFunction::PressKeys(data), ButtonEvent::ShortUp) => {
+                self.send_keys_up(data.keys);
+            }
+            (
+                ButtonFunction::PressKeys(data),
+                ButtonEvent::ShortTriggered | ButtonEvent::LongTriggered,
+            ) => {
+                self.send_keys_down(data.keys);
+                self.send_keys_up(data.keys);
             }
             _ => {}
         };

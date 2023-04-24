@@ -20,7 +20,7 @@ pub struct Button {
 }
 
 impl Button {
-    pub fn primary_function(&mut self) -> ButtonFunction {
+    pub fn primary_function(&self) -> ButtonFunction {
         match self.raw_data[PRIMARY_BYTE] % 16 {
             0 => ButtonFunction::PressKeys(self.primary_data().into()),
             1 => ButtonFunction::ChangePage(self.primary_data().into()),
@@ -31,7 +31,7 @@ impl Button {
             _ => ButtonFunction::None, // invalid but also 2
         }
     }
-    pub fn secondary_function(&mut self) -> ButtonFunction {
+    pub fn secondary_function(&self) -> ButtonFunction {
         match self.raw_data[SECONDARY_BYTE] % 16 {
             0 => ButtonFunction::PressKeys(self.secondary_data().into()),
             1 => ButtonFunction::ChangePage(self.secondary_data().into()),
@@ -45,7 +45,7 @@ impl Button {
     pub fn has_secondary_function(&self) -> bool {
         self.raw_data[SECONDARY_BYTE] != 2
     }
-    pub fn has_live_data(&mut self) -> bool {
+    pub fn has_live_data(&self) -> bool {
         self.raw_image[0] == 1
     }
 
